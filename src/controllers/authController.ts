@@ -3,9 +3,9 @@ import {StatusCodes} from "http-status-codes";
 import * as process from "process";
 import {OAuth2Client} from "google-auth-library";
 import axios from "axios";
-import User from "../models/User";
+import User, {IUser} from "../models/User";
 import crypto from "crypto";
-import {createAccessToken, isRefreshTokenValid, sendRefreshToken} from "../utils/jwt";
+import {createAccessToken, isRefreshTokenValid, removeRefreshToken, sendRefreshToken} from "../utils/jwt";
 import {BadRequestError, NotFoundError, UnauthenticatedError} from "../errors";
 import createHash from "../utils/createHash";
 
@@ -31,77 +31,20 @@ type RESET_PASSWORD_PARAMS = {
     token: string
 } & LOGIN_PARAMS
 
-export async function getUrl(_: Request, res: Response){
-    // const redirectURl = 'http://localhost:3000/login';
-
-    console.log(process.env);
-
-    const oAuth2Client = new OAuth2Client({
-        clientId: `${process.env.GOOGLE_CLIENT_ID}`,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        redirectUri: process.env.GOOGLE_REDIRECT_URL
-    });
-
-    const authorizeUrl = oAuth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: 'https://www.googleapis.com/auth/userinfo.profile openid',
-        prompt: 'consent'
-    })
-
-    res.json({url: authorizeUrl})
+type GOOGLE_AUTH_PARAMS = {
+    token: string
 }
 
-export async function googleAuthHandler(req: Request, res: Response){
-
-    console.log(req.query.code);
-
-    const code = req.query.code as string;
-
-    console.log(code);
-
-    try {
-        const oAuth2Client = new OAuth2Client(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            process.env.GOOGLE_REDIRECT_URL
-        );
-
-        const resTokenResponse = await oAuth2Client.getToken(code);
-
-        console.log('resTokenResponse', resTokenResponse);
-        // @ts-ignore
-        await oAuth2Client.setCredentials(resTokenResponse.tokens);
-
-        console.log('Tokens success');
-
-        const user = oAuth2Client.credentials;
-
-        console.log('user cred', user);
-
-        const userData = await oAuth2Client.verifyIdToken({
-            idToken: user.id_token as string,
-            audience: process.env.GOOGLE_CLIENT_ID
-        })
-
-        const payload = userData.getPayload();
-
-        console.log(payload);
-
-        const data = await getUserData(user.access_token as string)
-
-        console.log(data);
-
-        res.redirect('http://localhost:3000');
-    } catch (e) {
-        console.log(e);
-    }
-
-}
-
-export async function getUserData(access_token: string){
-    const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${access_token}`)
-
-    return response.data;
+type GOOGLE_USER_DATA = {
+    email: string
+    email_verified: boolean
+    family_name: string
+    given_name: string
+    hd: string
+    locale: string
+    name: string
+    picture: string;
+    sub: string;
 }
 
 export async function register(req: Request, res: Response){
@@ -119,20 +62,21 @@ export async function register(req: Request, res: Response){
 
     // TODO send email
 
-
-    res.status(StatusCodes.CREATED).json({ msg: 'Success! Please check your email!', email, emailVerificationToken});
+    res.status(StatusCodes.CREATED).json({ msg: 'Success! Please check your email!', email, name,  emailVerificationToken});
 }
 
 export const login = async (req: Request, res: Response) => {
     const {email, password } = req.body as LOGIN_PARAMS;
 
-    const user = await User.findOne({email});
+    const user  = await User.findOne({email}) as IUser | null;
 
     if (!user) {
         throw new UnauthenticatedError(`Could not find user with email ${email}`);
     }
 
-    const isPasswordCorrect = await user!.comparePassword(password);
+    // TODO check if user not from google
+
+    const isPasswordCorrect = await (user as any).comparePassword(password);
 
     if (!isPasswordCorrect) {
         throw new UnauthenticatedError('Invalid Password');
@@ -143,13 +87,16 @@ export const login = async (req: Request, res: Response) => {
         throw new UnauthenticatedError('Please verify your email');
     }
 
-    console.log('reach');
-
     await sendRefreshToken(res, user)
 
     res.status(StatusCodes.OK).json({
-        accessToken: createAccessToken(user)
+        accessToken: createAccessToken(user),
     })
+}
+
+export const logout = async (_: Request, res: Response) => {
+    removeRefreshToken(res);
+    res.status(StatusCodes.OK).json({msg: 'Successfully logged out'});
 }
 
 export const refreshTokenHandler = async (req: Request, res: Response) => {
@@ -168,7 +115,7 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
         throw new UnauthenticatedError('Authentication Invalid')
     }
 
-    const user = await User.findOne({ _id: payload.userId });
+    const user = await User.findOne({ _id: payload.userId }) as IUser | null;
 
     if (!user) {
         throw new UnauthenticatedError('Authentication Invalid')
@@ -187,7 +134,7 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
 export const verifyEmail = async (req: Request, res: Response) => {
     const {verificationToken, email} = req.body as VERIFICATION_EMAIL_PARAMS;
 
-    const user = await User.findOne({email});
+    const user = await User.findOne({email}) as IUser | null;;
 
     if(!user){
         throw new UnauthenticatedError(`Can not find user with email ${email}`);
@@ -196,6 +143,8 @@ export const verifyEmail = async (req: Request, res: Response) => {
     if(verificationToken !== verificationToken){
         throw new UnauthenticatedError('Invalid verification token');
     }
+
+    // TODO add token expiration date
 
     user.isVerified = true;
     user.emailVerificationToken = ''
@@ -213,9 +162,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
         throw new BadRequestError('Please provide valid email');
     }
 
-    const user = await User.findOne({ email });
-
-
+    const user = await User.findOne({ email }) as IUser | null;
 
     if(!user){
         throw new NotFoundError(`Can't find user with email ${email}`);
@@ -235,7 +182,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     res
         .status(StatusCodes.OK)
-        .json({ msg: 'Please check your email for reset password link' , passwordToken});
+        .json({ msg: 'Please check your email for reset password link' , passwordToken: user.passwordToken, email: user.email });
 
 }
 
@@ -246,7 +193,7 @@ export const resetPassword = async (req: Request, res: Response) => {
         throw new BadRequestError('Please provide all values');
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }) as IUser | null
 
     if(!user){
         throw new NotFoundError(`Can't find user with that email`);
@@ -254,12 +201,9 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     const currentDate = new Date();
 
-    console.log(user);
-
     if(currentDate > user!.passwordTokenExpirationDate!){
         throw new BadRequestError('Reset password time is over. Try again');
     }
-
 
     if( user!.passwordToken === createHash(token)){
         throw new BadRequestError('Invalid reset password token');
@@ -273,4 +217,42 @@ export const resetPassword = async (req: Request, res: Response) => {
     res
         .status(StatusCodes.OK)
         .json({ msg: 'Success! Password updated' });
+}
+
+export const googleAuthHandler = async (req: Request, res: Response) => {
+    const { token } = req.body as GOOGLE_AUTH_PARAMS
+
+    if(!token){
+        throw new BadRequestError('token is Empty');
+    }
+
+    const oAuth2Client = new OAuth2Client(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        'postmessage'
+    );
+
+    const {tokens} = await oAuth2Client.getToken(token);
+
+    const {sub, email, name, picture}: GOOGLE_USER_DATA = await getUserDataFromGoogle(tokens.access_token as string)
+
+    const user = await User.findOne({googleId: sub})
+
+    if(user){
+        res.status(StatusCodes.OK).json({ new: false, user })
+    } else {
+        const newUser = await User.create({ name, email, avatar: picture, googleId: sub, isVerified: true});
+
+        res.status(StatusCodes.OK).json({ new: true, newUser })
+    }
+}
+
+export async function getUserDataFromGoogle(access_token: string){
+    const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
+        headers: {
+            Authorization : `Bearer ${access_token}`
+        }
+    })
+
+    return response.data;
 }

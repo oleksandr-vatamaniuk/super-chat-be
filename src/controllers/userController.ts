@@ -4,6 +4,7 @@ import User from "../models/User";
 import {StatusCodes} from "http-status-codes";
 import {BadRequestError, NotFoundError, UnauthenticatedError} from "../errors";
 import {v2 as cloudinary} from 'cloudinary';
+import crypto from "crypto";
 
 export type UPDATE_USER_PARAMS = {
     firstName: string;
@@ -15,26 +16,32 @@ export type UPDATE_PASSWORD_PARAMS = {
     oldPassword: string;
     newPassword: string;
 }
+
 export const getCurrentUser = async (req: Request, res: Response)=> {
     const {userId} = req.user as JWTUserPayload;
 
-    const user = await User.findOne({_id: userId}).select('name email')
+    const user = await User.findOne({_id: userId})
 
-    return res.status(StatusCodes.OK).json({user})
+    return res.status(StatusCodes.OK).json({
+        user: (user as any).getSafetyProperties()
+    })
 }
 
 export const updateUser = async (req: Request, res: Response) => {
-    const {firstName, lastName, age } = req.body as UPDATE_USER_PARAMS;
+    console.log('fire');
+    const {name, age } = req.body as any;
 
     const user =
         await User
             .findByIdAndUpdate(
                 req.user!.userId,
-                {name: `${firstName} ${lastName}`, age},
+                {name: `${name}`, age},
                 { new: true, runValidators: true }
-            ).select('name email age');
+            )
 
-    res.status(StatusCodes.OK).json({user})
+    // TODO make token invalid
+
+    res.status(StatusCodes.OK).json({user: (user as any).getSafetyProperties()})
 }
 
 export const updateUserPassword = async (req: Request, res: Response)=> {
@@ -52,11 +59,15 @@ export const updateUserPassword = async (req: Request, res: Response)=> {
         throw new UnauthenticatedError('Invalid old password');
     }
 
+    const candidatePasswordVerificationToken = crypto.randomBytes(40).toString('hex');
+
     user!.password = newPassword;
+    user!.candidatePassword = newPassword;
+    user!.candidatePasswordVerificationToken = candidatePasswordVerificationToken;
 
     await user!.save();
 
-    res.status(StatusCodes.OK).json({ msg: 'Success! Password Updated.' });
+    res.status(StatusCodes.OK).json({ msg: 'Success! Password Updated.', candidatePasswordVerificationToken: user!.candidatePasswordVerificationToken });
 }
 
 export const getSingleUser = async (req: Request, res: Response) =>{
@@ -74,7 +85,6 @@ export const updateUserAvatar= async (req: Request, res: Response) =>{
     let dataURI = "data:" + req.file!.mimetype + ";base64," + b64;
 
     const {url} = await cloudinary.uploader.upload(
-        // @ts-ignore
         dataURI,
         {
             use_filename: true,
@@ -89,7 +99,7 @@ export const updateUserAvatar= async (req: Request, res: Response) =>{
                 { new: true, runValidators: true }
             ).select('name email age avatar');
 
-    return res.status(StatusCodes.OK).json({user})
+    return res.status(StatusCodes.OK).json({user: (user as any).getSafetyProperties()})
 }
 
 export const findUserByEmailOrName = async (_: Request, res: Response) =>{

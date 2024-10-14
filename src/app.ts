@@ -12,7 +12,7 @@ import {default as notFoundMiddleware } from './middlewares/not-found'
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/userRoutes";
 import {refreshTokenHandler} from "./controllers/authController";
-// import fileUpload from "express-fileupload";
+import morgan from 'morgan'
 
 
 dotenv.config();
@@ -20,15 +20,17 @@ dotenv.config();
 const app: Express = express();
 const PORT = process.env.PORT || 8000;
 
+app.use(morgan('tiny'));
+app.use(cors());
+app.use(express.json())
+
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_CLOUD_API_SECRET
 });
 
-app.use(cors())
-app.use(express.json())
-// app.use(fileUpload());
+
 app.use(cookieParser(process.env.REFRESH_TOKEN_SECRET!))
 
 

@@ -1,6 +1,7 @@
 import { Model, Schema, model, Document} from 'mongoose';
 import validator from "validator";
 import bcrypt from 'bcrypt'
+
 export interface IUser extends Document{
     name: string;
     email: string;
@@ -9,10 +10,13 @@ export interface IUser extends Document{
     emailVerificationToken: string;
     isVerified: boolean;
     passwordToken: string;
+    candidatePassword: string;
+    candidatePasswordVerificationToken: string
     passwordTokenExpirationDate: Date | null;
     avatar: string;
     verified: Date;
     tokenVersion: Number;
+    googleId?: string
 }
 
 export interface IUserPayload {
@@ -20,15 +24,17 @@ export interface IUserPayload {
    id: string
 }
 
-interface IUserMethods {
+export interface IUserMethods {
     comparePassword(candidatePassword: string): Promise<string>;
     getTokenPayload(): IUserPayload
     increaseTokenVersion(): void
+    getSafetyProperties(): any
 }
 
 export type UserModel = Model<IUser, {}, IUserMethods>;
 
-const UserSchema = new Schema<IUser, UserModel, IUserMethods>({
+
+const UserSchema = new Schema<IUser, UserModel>({
     name: {
         type: String,
         required: [true, 'Please provide name'],
@@ -41,9 +47,18 @@ const UserSchema = new Schema<IUser, UserModel, IUserMethods>({
         required: [true, 'Please provide email'],
         validate: [ validator.isEmail, 'Please provide valid email']
     },
+    candidatePasswordVerificationToken: {
+        type: String,
+        required: false,
+    },
+    candidatePassword: {
+        type: String,
+        required: false,
+        minlength: 6,
+    },
     password: {
         type: String,
-        required: [true, 'Please provide password'],
+        required: [false, 'Please provide password'],
         minlength: 6,
     },
     age: {
@@ -71,20 +86,41 @@ const UserSchema = new Schema<IUser, UserModel, IUserMethods>({
     passwordTokenExpirationDate: {
         type: Date,
     },
-    verified: Date
+    verified: Date,
+    googleId: {
+        type: String,
+        required: false
+    }
 }, {timestamps: true});
 
 
 UserSchema.pre('save', async function () {
-    if (!this.isModified('password')) return;
+    if (!this.isModified('password') || !this.isModified('candidatePassword')) return;
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    if(this.isModified('candidatePassword')){
+        this.candidatePassword = await bcrypt.hash(this.candidatePassword, salt);
+    }
+    if(this.isModified('password')){
+        this.password = await bcrypt.hash(this.password, salt);
+    }
 });
 
 UserSchema.method('comparePassword', async function (candidatePassword: string) {
     return await bcrypt.compare(candidatePassword, this.password);
 });
 
+UserSchema.method('getSafetyProperties', function () {
+    return {
+        avatar: this.avatar,
+        email: this.email,
+        name: this.name,
+        age: this.age,
+        id: this._id,
+        rooms: [],
+        source: []
+    }
+})
 
-const User = model<IUser, UserModel>('User', UserSchema);
+
+const User: UserModel = model<IUser, UserModel>('User', UserSchema);
 export default User;

@@ -40,3 +40,7 @@ export const sendRefreshToken = async (res: Response, user: IUser) => {
         expires: new Date(Date.now() + longerExp),
     });
 }
+
+export const removeRefreshToken = (res: Response) => {
+    res.cookie('refreshToken', '', {maxAge: 1})
+}

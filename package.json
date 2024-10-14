@@ -6,14 +6,14 @@
   "scripts": {
     "watch": "tsc -w",
     "dev": "nodemon src/app.ts",
-    "start": "node dist/app.js"
+    "start": "node dist/app.js",
+    "build": "tsc --build"
   },
   "author": "Oleksandr Vatamaniuk",
   "license": "ISC",
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.6",
-    "@types/express-fileupload": "^1.4.4",
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^1.4.11",
     "@types/validator": "^13.11.8",
@@ -25,11 +25,11 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-async-errors": "^3.1.1",
-    "express-fileupload": "^1.4.3",
     "google-auth-library": "^9.2.0",
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.1.0",
+    "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "qs-stringify": "^1.2.1",
     "validator": "^13.11.0"

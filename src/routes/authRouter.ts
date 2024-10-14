@@ -1,23 +1,22 @@
 import {Router} from "express";
 import {
-    googleAuthHandler,
-    getUrl,
     login,
     register,
     verifyEmail,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    googleAuthHandler, logout
 } from "../controllers/authController";
+import {isAuth} from "../middlewares/isAuth";
 
 const router = Router();
 
 router.route('/login').post(login)
+router.route('/logOut').get(isAuth, logout)
 router.route('/register').post(register)
 router.route('/verify_email').post(verifyEmail)
 router.route('/forgot_password').post(forgotPassword)
 router.route('/reset_password').post(resetPassword)
-
-router.post('/url', getUrl)
-router.route('/google').get(googleAuthHandler)
+router.route('/google').post(googleAuthHandler)
 
 export default router;
