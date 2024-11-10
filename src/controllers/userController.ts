@@ -28,7 +28,6 @@ export const getCurrentUser = async (req: Request, res: Response)=> {
 }
 
 export const updateUser = async (req: Request, res: Response) => {
-    console.log('fire');
     const {name, age } = req.body as any;
 
     const user =
@@ -102,7 +101,15 @@ export const updateUserAvatar= async (req: Request, res: Response) =>{
     return res.status(StatusCodes.OK).json({user: (user as any).getSafetyProperties()})
 }
 
-export const findUserByEmailOrName = async (_: Request, res: Response) =>{
+export const findUsersByName = async (req: Request, res: Response) =>{
+    const {userId} = req.user as any;
+    const {name} = req.body as any;
 
-    return res.status(StatusCodes.OK).json({})
+    const users = await User.find({
+        name: { $regex: name, $options: 'i' },
+        _id: { $ne: userId }
+    }).select('name id email avatar');
+
+    return res.status(StatusCodes.OK).json(users)
 }
+

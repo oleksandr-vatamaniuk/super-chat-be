@@ -1,27 +1,31 @@
-import express, {Express, Response} from "express";
+import express, {Response} from "express";
 import "express-async-errors";
 import dotenv from 'dotenv';
 import cors from 'cors'
 import {v2 as cloudinary} from 'cloudinary';
 import * as process from "process";
 import authRouter from "./routes/authRouter";
+import userRoutes from "./routes/userRoutes";
+import chatRouter from "./routes/chatRouter";
+import messageRouter from "./routes/messageRouter";
 import { StatusCodes } from "http-status-codes";
 import {connectDB} from "./db/connectDB";
 import errorHandlerMiddleware from "./middlewares/error-handler";
 import {default as notFoundMiddleware } from './middlewares/not-found'
 import cookieParser from "cookie-parser";
-import userRoutes from "./routes/userRoutes";
 import {refreshTokenHandler} from "./controllers/authController";
 import morgan from 'morgan'
-
+import {app, server} from "./socket/socket";
 
 dotenv.config();
 
-const app: Express = express();
 const PORT = process.env.PORT || 8000;
 
 app.use(morgan('tiny'));
-app.use(cors());
+
+app.use(cors({ credentials: true, origin: true }));
+app.set('trust proxy', true);
+
 app.use(express.json())
 
 cloudinary.config({
@@ -46,23 +50,23 @@ app.get('/api/v1/refresh_token', refreshTokenHandler)
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/message', messageRouter);
 
 app.use(notFoundMiddleware)
 app.use(errorHandlerMiddleware);
 
-
-const start = async () => {
+(async () => {
     try {
         await connectDB(process.env.MONGO_URI as string);
-        app.listen(PORT, async () => {
+        server.listen(PORT, async () => {
             console.log(`Server is listening on port ${PORT}...`)
         })
     } catch (error){
         console.log(error)
     }
-}
+})()
 
-start();
 
 
 
