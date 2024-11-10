@@ -6,7 +6,7 @@
   "scripts": {
     "watch": "tsc -w",
     "dev": "nodemon src/app.ts",
-    "start": "node dist/app.js",
+    "start": "NODE_ENV=dev node dist/app.js",
     "build": "tsc --build"
   },
   "author": "Oleksandr Vatamaniuk",
