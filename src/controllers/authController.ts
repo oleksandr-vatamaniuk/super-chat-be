@@ -71,7 +71,7 @@ export async function register(req: Request, res: Response){
 
     const transporter = createTransport({
         host: process.env.BREVO_HOST,
-        port: process.env.BREVO_PORT as number,
+        port: Number(process.env.BREVO_PORT),
         auth: {user: process.env.BREVO_USER, pass: process.env.BREVO_TOKEN},
     });
 
@@ -272,8 +272,7 @@ export const googleAuthHandler = async (req: Request, res: Response) => {
     }
 }
 
-export async function getUserDataFromGoogle(access_token: string){
-
+export async function getUserDataFromGoogle(_: string = ''){
     // ts-ignore
     const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
         // headers: {
