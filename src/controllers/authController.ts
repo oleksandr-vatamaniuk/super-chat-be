@@ -135,8 +135,6 @@ export const logout = async (_: Request, res: Response) => {
 export const refreshTokenHandler = async (req: Request, res: Response) => {
     const {refreshToken: token} = req.signedCookies;
 
-    console.log('refresh token ',req.signedCookies);
-
     if (!token) {
         throw new UnauthenticatedError('Authentication Invalid')
     }
