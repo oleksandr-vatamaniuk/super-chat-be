@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
-dotenv.config();
+import * as process from "process";
 import {Response, Request} from "express";
 import {StatusCodes} from "http-status-codes";
-import * as process from "process";
 import {OAuth2Client} from "google-auth-library";
 import axios from "axios";
 import User, {IUser} from "../models/User";
@@ -75,7 +73,7 @@ export async function register(req: Request, res: Response){
         host: "smtp-relay.brevo.com",
         port: 587,
         auth: {
-            user: "7fa911001@smtp-brevo.com",
+            user: process.env.BREVO_USER,
             pass: process.env.BREVO_TOKEN,
         },
     });
