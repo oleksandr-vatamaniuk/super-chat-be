@@ -57,7 +57,7 @@ cloudinary_1.v2.config({
 });
 socket_1.app.use((0, cookie_parser_1.default)(process.env.REFRESH_TOKEN_SECRET));
 socket_1.app.get('/', (_, res) => {
-    res.send('<h1>SUPER CHAT APP BE</h1>');
+    res.send('<h1>SUPER CHAT APP - BE</h1>');
 });
 socket_1.app.get('/api/v1', (_, res) => {
     res.status(http_status_codes_1.StatusCodes.OK).json({ msg: 'OK' });
