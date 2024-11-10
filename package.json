@@ -6,11 +6,19 @@
   "scripts": {
     "watch": "tsc -w",
     "dev": "nodemon src/app.ts",
-    "start": "NODE_ENV=dev node dist/app.js",
-    "build": "tsc --build"
+    "start": "nodemon src/app.ts",
+    "build": "rimraf dist && tsc",
+    "ts.check": "tsc --project tsconfig.json",
+    "add-build": "git add dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Oleksandr Vatamaniuk",
   "license": "ISC",
+  "pre-commit": [
+    "ts.check",
+    "build",
+    "add-build"
+  ],
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.6",
@@ -44,6 +52,8 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.9.0",
     "nodemon": "^3.0.1",
+    "pre-commit": "^1.2.2",
+    "rimraf": "^6.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
   }
