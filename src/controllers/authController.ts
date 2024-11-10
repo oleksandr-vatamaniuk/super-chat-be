@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import {Response, Request} from "express";
 import {StatusCodes} from "http-status-codes";
 import * as process from "process";
@@ -8,6 +10,8 @@ import crypto from "crypto";
 import {createAccessToken, isRefreshTokenValid, removeRefreshToken, sendRefreshToken} from "../utils/jwt";
 import {BadRequestError, NotFoundError, UnauthenticatedError} from "../errors";
 import createHash from "../utils/createHash";
+import {createTransport} from "nodemailer"
+import {signUpTemplate} from "../emailTemplates/signUp";
 
 
 type LOGIN_PARAMS =  {
@@ -47,6 +51,7 @@ type GOOGLE_USER_DATA = {
     sub: string;
 }
 
+
 export async function register(req: Request, res: Response){
     const {name, email, password, age } = req.body as REGISTER_DATA;
 
@@ -58,11 +63,40 @@ export async function register(req: Request, res: Response){
 
     const emailVerificationToken = crypto.randomBytes(40).toString('hex');
 
-    await User.create({ name, email, password, emailVerificationToken, age });
 
-    // TODO send email
+    const query = Object.entries({
+        name,
+        email,
+        token : emailVerificationToken
+    }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-    res.status(StatusCodes.CREATED).json({ msg: 'Success! Please check your email!', email, name,  emailVerificationToken});
+    const link = `http://localhost:3000/signup/verify&${query}`
+
+    const transporter = createTransport({
+        host: "smtp-relay.brevo.com",
+        port: 587,
+        auth: {
+            user: "7fa911001@smtp-brevo.com",
+            pass: "xsmtpsib-793bb216d656d9d29a4c6005b8725e0d8230dee51b43f4d7e4d67a318c067f7b-OFZ3SXE4JknW6vxV",
+        },
+    });
+
+    const mailOptions = {
+        from: 'djager007s@gmail.com',
+        to: email,
+        subject: `Welcome to Super Chat App, ${name}`,
+        html: signUpTemplate(name, link)
+    };
+
+    try {
+        await transporter.sendMail(mailOptions)
+
+        await User.create({ name, email, password, emailVerificationToken, age });
+
+        res.status(StatusCodes.CREATED).json({ msg: 'Success! Please check your email!'});
+    } catch (error){
+        console.log(error)
+    }
 }
 
 export const login = async (req: Request, res: Response) => {
@@ -102,7 +136,7 @@ export const logout = async (_: Request, res: Response) => {
 export const refreshTokenHandler = async (req: Request, res: Response) => {
     const {refreshToken: token} = req.signedCookies;
 
-    console.log(req.signedCookies);
+    console.log('refresh token ',req.signedCookies);
 
     if (!token) {
         throw new UnauthenticatedError('Authentication Invalid')
@@ -124,7 +158,6 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
     if (user.tokenVersion !== payload.tokenVersion) {
         throw new UnauthenticatedError('Authentication Invalid')
     }
-
 
     await sendRefreshToken(res, user);
 
@@ -205,7 +238,7 @@ export const resetPassword = async (req: Request, res: Response) => {
         throw new BadRequestError('Reset password time is over. Try again');
     }
 
-    if( user!.passwordToken === createHash(token)){
+    if( user!.passwordToken !== createHash(token)){
         throw new BadRequestError('Invalid reset password token');
     }
 
@@ -248,6 +281,8 @@ export const googleAuthHandler = async (req: Request, res: Response) => {
 }
 
 export async function getUserDataFromGoogle(access_token: string){
+
+    // ts-ignore
     const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
         headers: {
             Authorization : `Bearer ${access_token}`

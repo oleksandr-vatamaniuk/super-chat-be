@@ -1,7 +1,7 @@
 import {Router} from "express";
 import {isAuth} from "../middlewares/isAuth";
 import {
-    findUserByEmailOrName, getCurrentUser,
+    findUsersByName, getCurrentUser,
     getSingleUser,
     updateUser,
     updateUserAvatar,
@@ -17,6 +17,6 @@ router.route('/update-user-password').patch(isAuth, updateUserPassword);
 router.route('/update-avatar').patch(isAuth, uploadFile, updateUserAvatar);
 
 router.route('/:id').get(isAuth, getSingleUser);
-router.route('/find-users').post(isAuth, findUserByEmailOrName)
+router.route('/find-users').post(isAuth, findUsersByName)
 
 export default router;
