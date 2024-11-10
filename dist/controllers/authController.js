@@ -26,7 +26,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserDataFromGoogle = exports.googleAuthHandler = exports.resetPassword = exports.forgotPassword = exports.verifyEmail = exports.refreshTokenHandler = exports.logout = exports.login = exports.register = void 0;
+exports.googleAuthHandler = exports.resetPassword = exports.forgotPassword = exports.verifyEmail = exports.refreshTokenHandler = exports.logout = exports.login = void 0;
+exports.register = register;
+exports.getUserDataFromGoogle = getUserDataFromGoogle;
 const process = __importStar(require("process"));
 const http_status_codes_1 = require("http-status-codes");
 const google_auth_library_1 = require("google-auth-library");
@@ -71,7 +73,6 @@ async function register(req, res) {
         console.log(error);
     }
 }
-exports.register = register;
 const login = async (req, res) => {
     const { email, password } = req.body;
     const user = await User_1.default.findOne({ email });
@@ -203,5 +204,4 @@ async function getUserDataFromGoogle(_ = '') {
     const response = await axios_1.default.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {});
     return response.data;
 }
-exports.getUserDataFromGoogle = getUserDataFromGoogle;
 //# sourceMappingURL=authController.js.map

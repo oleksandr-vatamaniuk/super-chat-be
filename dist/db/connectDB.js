@@ -23,11 +23,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.connectDB = void 0;
+exports.connectDB = connectDB;
 const mongoose = __importStar(require("mongoose"));
 async function connectDB(url) {
     mongoose.set("strictQuery", false);
     return mongoose.connect(url);
 }
-exports.connectDB = connectDB;
 //# sourceMappingURL=connectDB.js.map
