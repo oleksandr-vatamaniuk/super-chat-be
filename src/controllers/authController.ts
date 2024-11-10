@@ -79,7 +79,7 @@ export async function register(req: Request, res: Response){
     });
 
     const mailOptions = {
-        from: 'djager007s@gmail.com',
+        from: process.env.BREVO_FROM,
         to: email,
         subject: `Welcome to Super Chat App, ${name}`,
         html: signUpTemplate(name, link)
