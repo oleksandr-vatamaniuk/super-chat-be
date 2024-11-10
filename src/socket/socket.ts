@@ -2,13 +2,15 @@ import { Server } from "socket.io";
 import http from "http";
 import express from "express";
 import {markMessagesAsRead} from "../controllers/messageController";
+import * as process from "process";
+
 
 const app = express();
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ['http://localhost:3000','http://localhost:8000'],
+        origin: [ process.env.FRONTEND],
         methods: ['GET', 'POST']
     },
 });

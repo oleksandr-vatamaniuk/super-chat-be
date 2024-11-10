@@ -72,10 +72,7 @@ export async function register(req: Request, res: Response){
     const transporter = createTransport({
         host: process.env.BREVO_HOST,
         port: process.env.BREVO_PORT as number,
-        auth: {
-            user: process.env.BREVO_USER,
-            pass: process.env.BREVO_TOKEN,
-        },
+        auth: {user: process.env.BREVO_USER, pass: process.env.BREVO_TOKEN},
     });
 
     const mailOptions = {
@@ -279,9 +276,9 @@ export async function getUserDataFromGoogle(access_token: string){
 
     // ts-ignore
     const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
-        headers: {
-            Authorization : `Bearer ${access_token}`
-        }
+        // headers: {
+        //     Authorization : `Bearer ${access_token}`
+        // }
     })
 
     return response.data;
