@@ -63,7 +63,6 @@ export async function register(req: Request, res: Response){
 
     const emailVerificationToken = crypto.randomBytes(40).toString('hex');
 
-
     const query = Object.entries({
         name,
         email,
