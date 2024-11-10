@@ -77,7 +77,7 @@ export async function register(req: Request, res: Response){
         port: 587,
         auth: {
             user: "7fa911001@smtp-brevo.com",
-            pass: "xsmtpsib-793bb216d656d9d29a4c6005b8725e0d8230dee51b43f4d7e4d67a318c067f7b-OFZ3SXE4JknW6vxV",
+            pass: process.env.BREVO_TOKEN,
         },
     });
 
