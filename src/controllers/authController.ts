@@ -67,7 +67,7 @@ export async function register(req: Request, res: Response){
         token : emailVerificationToken
     }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-    const link = `http://localhost:3000/signup/verify&${query}`
+    const link = `${process.env.FRONTEND}/signup/verify&${query}`
 
     const transporter = createTransport({
         host: process.env.BREVO_HOST,
