@@ -70,8 +70,8 @@ export async function register(req: Request, res: Response){
     const link = `http://localhost:3000/signup/verify&${query}`
 
     const transporter = createTransport({
-        host: "smtp-relay.brevo.com",
-        port: 587,
+        host: process.env.BREVO_HOST,
+        port: process.env.BREVO_PORT as number,
         auth: {
             user: process.env.BREVO_USER,
             pass: process.env.BREVO_TOKEN,
