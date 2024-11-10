@@ -9,8 +9,7 @@
     "start": "nodemon src/app.ts",
     "build": "rimraf dist && tsc",
     "ts.check": "tsc --project tsconfig.json",
-    "add-build": "git add dist",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "add-build": "git add dist"
   },
   "author": "Oleksandr Vatamaniuk",
   "license": "ISC",
