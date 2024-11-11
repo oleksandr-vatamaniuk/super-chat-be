@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.signUpTemplate = void 0;
-const signUpTemplate = function (userName, verificationCode) {
-    return `
-    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+exports.resetPasswordTemplate = resetPasswordTemplate;
+function resetPasswordTemplate(verificationCode) {
+    return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -252,10 +251,7 @@ const signUpTemplate = function (userName, verificationCode) {
                                                                                             role="module-content">
                                                                                             <div>
                                                                                                 <div style="font-family: inherit; text-align: center">
-                                                                                                    <span style="font-size: 36px">Thanks for signing up!</span>
-                                                                                                </div>
-                                                                                                <div style="font-family: inherit; text-align: center">
-                                                                                                    <span style="font-size: 32px">${userName}</span>
+                                                                                                    <span style="font-size: 36px">Password Reset</span>
                                                                                                 </div>
                                                                                             </div>
                                                                                         </td>
@@ -277,7 +273,7 @@ const signUpTemplate = function (userName, verificationCode) {
                                                                                             role="module-content">
                                                                                             <div>
                                                                                                 <div style="font-family: inherit; text-align: center">
-                                                                                                    <span style="font-size: 18px">Please verify your email address to</span><span
+                                                                                                    <span style="font-size: 18px">Please press the button and follow further steps to</span><span
                                                                                                         style="color: #000000; font-size: 18px; font-family: arial, helvetica, sans-serif"> get access to Super Chat App</span><span
                                                                                                         style="font-size: 18px">.</span>
                                                                                                 </div>
@@ -328,8 +324,7 @@ const signUpTemplate = function (userName, verificationCode) {
                                                                                                         style="border-radius:6px; font-size:16px; text-align:center; background-color:inherit;">
                                                                                                         <a href=${verificationCode}
                                                                                                            style="background-color:#0d6efd; border:1px solid #0d6efd; border-color: #0d6efd; border-radius:0px; border-width:1px; color:#fff; display:inline-block; font-size:14px; font-weight:normal; letter-spacing:0px; line-height:normal; padding:12px 40px 12px 40px; text-align:center; text-decoration:none; border-style:solid; font-family:inherit;"
-                                                                                                           target="_blank">Verify
-                                                                                                            Email
+                                                                                                           target="_blank">Reset Password
                                                                                                             Now</a>
                                                                                                     </td>
                                                                                                 </tr>
@@ -392,8 +387,6 @@ const signUpTemplate = function (userName, verificationCode) {
     </div>
 </center>
 </body>
-</html>
-`;
-};
-exports.signUpTemplate = signUpTemplate;
-//# sourceMappingURL=signUp.js.map
+</html>`;
+}
+//# sourceMappingURL=resetPasswordTemplate.js.map

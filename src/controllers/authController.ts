@@ -2,7 +2,7 @@ import * as process from "process";
 import {Response, Request} from "express";
 import {StatusCodes} from "http-status-codes";
 import {OAuth2Client} from "google-auth-library";
-import axios from "axios";
+import axios, {AxiosRequestConfig} from "axios";
 import User, {IUser} from "../models/User";
 import crypto from "crypto";
 import {createAccessToken, isRefreshTokenValid, removeRefreshToken, sendRefreshToken} from "../utils/jwt";
@@ -10,6 +10,7 @@ import {BadRequestError, NotFoundError, UnauthenticatedError} from "../errors";
 import createHash from "../utils/createHash";
 import {createTransport} from "nodemailer"
 import {signUpTemplate} from "../emailTemplates/signUp";
+import {resetPasswordTemplate} from "../emailTemplates/resetPasswordTemplate";
 
 
 type LOGIN_PARAMS =  {
@@ -50,6 +51,7 @@ type GOOGLE_USER_DATA = {
 }
 
 
+
 export async function register(req: Request, res: Response){
     const {name, email, password, age } = req.body as REGISTER_DATA;
 
@@ -67,13 +69,7 @@ export async function register(req: Request, res: Response){
         token : emailVerificationToken
     }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-    const link = `${process.env.FRONTEND}/signup/verify&${query}`
-
-    const transporter = createTransport({
-        host: process.env.BREVO_HOST,
-        port: Number(process.env.BREVO_PORT),
-        auth: {user: process.env.BREVO_USER, pass: process.env.BREVO_TOKEN},
-    });
+    const link = `${process.env.FRONTEND}/signup/verify?${query}`
 
     const mailOptions = {
         from: process.env.BREVO_FROM,
@@ -83,13 +79,30 @@ export async function register(req: Request, res: Response){
     };
 
     try {
+        const transporter = createTransport({
+            host: process.env.BREVO_HOST,
+            port: Number(process.env.BREVO_PORT),
+            auth: {
+                user: process.env.BREVO_USER,
+                pass: process.env.BREVO_TOKEN
+            },
+        });
+
         await transporter.sendMail(mailOptions)
 
-        await User.create({ name, email, password, emailVerificationToken, age });
+        const AvatarQuery = Object.entries({
+            name,
+            background: 'random'
+        }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+
+        const avartarLink = `${process.env.AVATAR_LINK}${AvatarQuery}`
+
+        await User.create({ name, email, password, emailVerificationToken, age, avatar: avartarLink });
 
         res.status(StatusCodes.CREATED).json({ msg: 'Success! Please check your email!'});
     } catch (error){
         console.log(error)
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Can not send email'});
     }
 }
 
@@ -99,7 +112,7 @@ export const login = async (req: Request, res: Response) => {
     const user  = await User.findOne({email}) as IUser | null;
 
     if (!user) {
-        throw new UnauthenticatedError(`Could not find user with email ${email}`);
+        throw new BadRequestError(`Could not find user with email ${email}`);
     }
 
     // TODO check if user not from google
@@ -107,12 +120,12 @@ export const login = async (req: Request, res: Response) => {
     const isPasswordCorrect = await (user as any).comparePassword(password);
 
     if (!isPasswordCorrect) {
-        throw new UnauthenticatedError('Invalid Password');
+        throw new BadRequestError('Invalid Password');
     }
 
 
     if(!user!.isVerified){
-        throw new UnauthenticatedError('Please verify your email');
+        throw new BadRequestError('Please verify your email');
     }
 
     await sendRefreshToken(res, user)
@@ -195,20 +208,45 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     const passwordToken = crypto.randomBytes(70).toString('hex');
 
-    // send email
+    const query = Object.entries({
+        email,
+        token : passwordToken
+    }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-    const tenMinutes = 1000 * 60 * 10;
-    const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
+    const link = `${process.env.FRONTEND}/signup/verify?${query}`
 
-    user.passwordToken = createHash(passwordToken);
-    user.passwordTokenExpirationDate = passwordTokenExpirationDate;
+    const mailOptions = {
+        from: process.env.BREVO_FROM,
+        to: email,
+        subject: `Password reset for ${user.name}`,
+        html: resetPasswordTemplate(link)
+    };
 
-    await user.save();
+    try {
+        const transporter = createTransport({
+            host: process.env.BREVO_HOST,
+            port: Number(process.env.BREVO_PORT),
+            auth: {user: process.env.BREVO_USER, pass: process.env.BREVO_TOKEN},
+        });
 
-    res
-        .status(StatusCodes.OK)
-        .json({ msg: 'Please check your email for reset password link' , passwordToken: user.passwordToken, email: user.email });
+        await transporter.sendMail(mailOptions)
 
+
+        const tenMinutes = 1000 * 60 * 10;
+        const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
+
+        user.passwordToken = createHash(passwordToken);
+        user.passwordTokenExpirationDate = passwordTokenExpirationDate;
+
+
+        await user.save();
+
+        res
+            .status(StatusCodes.OK)
+            .json({ msg: 'Please check your email for reset password link'});
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 export const resetPassword = async (req: Request, res: Response) => {
@@ -264,21 +302,31 @@ export const googleAuthHandler = async (req: Request, res: Response) => {
     const user = await User.findOne({googleId: sub})
 
     if(user){
-        res.status(StatusCodes.OK).json({ new: false, user })
+        // res.status(StatusCodes.OK).json({ new: false, user })
+
+        await sendRefreshToken(res, user);
+
+        return res.status(StatusCodes.OK).json({ accessToken: createAccessToken(user) });
     } else {
         const newUser = await User.create({ name, email, avatar: picture, googleId: sub, isVerified: true});
 
-        res.status(StatusCodes.OK).json({ new: true, newUser })
+        await sendRefreshToken(res, newUser);
+
+        return res.status(StatusCodes.OK).json({ accessToken: createAccessToken(newUser) });
     }
 }
 
-export async function getUserDataFromGoogle(_: string = ''){
+export async function getUserDataFromGoogle(access_token: string = ''){
     // ts-ignore
-    const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
-        // headers: {
-        //     Authorization : `Bearer ${access_token}`
-        // }
-    })
+    const config: AxiosRequestConfig = {
+        headers: {
+            Authorization: `Bearer ${access_token}`,
+        },
+    };
+
+    const response =  await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, config)
 
     return response.data;
 }
+
+

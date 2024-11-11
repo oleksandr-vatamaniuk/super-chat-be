@@ -1,6 +1,6 @@
 export const signUpTemplate = function (userName,  verificationCode) {
     return `
-        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html data-editor-version="2" class="sg-campaigns" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -330,6 +330,15 @@ export const signUpTemplate = function (userName,  verificationCode) {
                                                                                                             Now</a>
                                                                                                     </td>
                                                                                                 </tr>
+                                                                                                <tr>
+                                                                                                    <td style="padding:0px 0px 20px 0px;"></td>
+                                                                                                </tr>
+                                                                                                <tr>
+                                                                                                    <td>Your link is active for 15 minutes</td>
+                                                                                                </tr>
+                                                                                                <tr>
+                                                                                                    <td>After that, you will need to resend the verification email.</td>
+                                                                                                </tr>
                                                                                                 </tbody>
                                                                                             </table>
                                                                                         </td>
@@ -381,5 +390,5 @@ export const signUpTemplate = function (userName,  verificationCode) {
 </center>
 </body>
 </html>
-    `
+`
 }

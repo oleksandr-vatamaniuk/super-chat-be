@@ -65,8 +65,6 @@ const UserSchema = new mongoose_1.Schema({
     }
 }, { timestamps: true });
 UserSchema.pre('save', async function () {
-    if (!this.isModified('password') || !this.isModified('candidatePassword'))
-        return;
     const salt = await bcrypt_1.default.genSalt(10);
     if (this.isModified('candidatePassword')) {
         this.candidatePassword = await bcrypt_1.default.hash(this.candidatePassword, salt);

@@ -95,8 +95,9 @@ const UserSchema = new Schema<IUser, UserModel>({
 
 
 UserSchema.pre('save', async function () {
-    if (!this.isModified('password') || !this.isModified('candidatePassword')) return;
+    // if (!this.isModified('password') || !this.isModified('candidatePassword')) return;
     const salt = await bcrypt.genSalt(10);
+
     if(this.isModified('candidatePassword')){
         this.candidatePassword = await bcrypt.hash(this.candidatePassword, salt);
     }
