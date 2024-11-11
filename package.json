@@ -5,8 +5,8 @@
   "main": "app.ts",
   "scripts": {
     "watch": "tsc -w",
-    "dev": "nodemon src/index.ts",
-    "start": "nodemon src/index.ts",
+    "dev": "nodemon src/api/index.ts",
+    "start": "nodemon src/api/index.ts",
     "build": "rimraf dist && tsc",
     "ts.check": "tsc --project tsconfig.json",
     "add-build": "git add dist"
