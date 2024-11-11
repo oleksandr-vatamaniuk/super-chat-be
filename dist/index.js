@@ -80,4 +80,4 @@ socket_1.app.use(error_handler_1.default);
         console.log(error);
     }
 })();
-//# sourceMappingURL=app.js.map
+//# sourceMappingURL=index.js.map
