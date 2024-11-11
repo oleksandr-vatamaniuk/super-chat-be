@@ -80,5 +80,4 @@ socket_1.app.use(error_handler_1.default);
         console.log(error);
     }
 })();
-exports.default = socket_1.app;
 //# sourceMappingURL=index.js.map

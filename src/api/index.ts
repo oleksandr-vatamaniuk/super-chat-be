@@ -66,8 +66,6 @@ app.use(errorHandlerMiddleware);
     }
 })()
 
-export default app;
-
 
 
 
