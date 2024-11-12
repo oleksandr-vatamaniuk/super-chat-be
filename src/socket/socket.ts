@@ -10,7 +10,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: [ process.env.FRONTEND as string],
+        // origin: [ process.env.FRONTEND as string],
         methods: ['GET', 'POST']
     },
 });
