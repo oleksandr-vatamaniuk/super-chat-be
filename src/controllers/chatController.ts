@@ -2,6 +2,10 @@ import {Request, Response} from "express";
 import Chat from "../models/Chat";
 import {StatusCodes} from "http-status-codes";
 import { Types } from 'mongoose';
+import {BadRequestError} from "../errors";
+import Message from "../models/Message";
+import {getReceiverSocketId, io} from "../socket/socket";
+import User from "../models/User";
 
 export const getUserChats = async (req: Request, res: Response) => {
     const { userId } = req.user as any;
@@ -45,6 +49,7 @@ export const getUserChats = async (req: Request, res: Response) => {
                             $project: {
                                 name: 1,
                                 avatar: 1,
+                                updatedAt: 1
                             },
                         },
                     ],
@@ -82,19 +87,36 @@ export const getUserChats = async (req: Request, res: Response) => {
                 },
             },
         },
+        // {
+        //     $addFields: {
+        //         participants: {
+        //             $filter: {
+        //                 input: "$participants",
+        //                 as: "participant",
+        //                 cond: { $ne: ["$$participant._id", userObjectId] },
+        //             },
+        //         },
+        //     },
+        // },
         {
             $addFields: {
-                participants: {
-                    $filter: {
-                        input: "$participants",
-                        as: "participant",
-                        cond: { $ne: ["$$participant._id", userObjectId] },
-                    },
+                participant: {
+                    $arrayElemAt: [
+                        {
+                            $filter: {
+                                input: "$participants",
+                                as: "participant",
+                                cond: { $ne: ["$$participant._id", userObjectId] },
+                            },
+                        },
+                        0,
+                    ],
                 },
             },
         },
         {
             $project: {
+                participants: 0,
                 messages: 0,
                 createdAt: 0,
                 __v: 0,
@@ -111,6 +133,39 @@ export const getUserChats = async (req: Request, res: Response) => {
 
     res.status(StatusCodes.OK).json(chats);
 };
+
+export const deleteChat = async (req: Request, res: Response) => {
+    const { userId } = req.user as any;
+
+    const { id: participantId } = req.params;
+
+    const chat = await Chat.findOne(
+        {
+            participants: {
+                    $all : [new Types.ObjectId(participantId), new Types.ObjectId(userId)]
+                }
+        }
+    )
+
+    if(!chat) throw new BadRequestError('No such chat');
+
+    await Message.deleteMany({ _id: { $in: chat.messages } });
+
+    await Chat.deleteOne({ _id: chat._id });
+
+    const receiverSocketId = getReceiverSocketId(participantId);
+
+    if(receiverSocketId){
+        const participant = await User.findOne({_id: userId})
+
+        io.to(receiverSocketId).emit('deleteChat', {
+            chatId: chat._id,
+            participant
+        });
+    }
+
+    res.status(StatusCodes.OK).json({msg: 'Successfully deleted chat', id: chat._id});
+}
 
 
 

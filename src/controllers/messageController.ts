@@ -10,7 +10,6 @@ export const sendMessage = async (req: Request, res: Response) => {
     } = req.body as any;
     const { id: receiverId } = req.params;
     const {userId: senderId} = req.user as any;
-    let isNewChat = false;
 
     let conversation = await Chat.findOne({
         participants: { $all: [senderId, receiverId] },
@@ -20,7 +19,6 @@ export const sendMessage = async (req: Request, res: Response) => {
         conversation = await Chat.create({
             participants: [senderId, receiverId],
         });
-        isNewChat = true;
     }
 
     const newMessage = new Message({
@@ -38,11 +36,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
-        if (isNewChat){
-            io.to(receiverSocketId).emit("newChat", conversation);
-        } else {
-            io.to(receiverSocketId).emit("newMessage", newMessage);
-        }
+        io.to(receiverSocketId).emit("newMessage", newMessage);
     }
 
     res.status(StatusCodes.CREATED).json(newMessage);
@@ -75,3 +69,19 @@ export const markMessagesAsRead = async (readUser, updateUser) => {
 
     return updateResult;
 };
+
+
+export const findMessages = async (req: Request, res: Response) =>{
+    const {userId} = req.user as any;
+    const {searchText} = req.body as any;
+
+    const messages = await Message.find({
+        message: { $regex: searchText, $options: "i" }, // Case-insensitive text match
+        $or: [
+            { senderId: userId },
+            { receiverId: userId }
+        ]
+    }).sort({ createdAt: -1 }); // Sort by the latest messages first
+
+    return res.status(StatusCodes.OK).json(messages)
+}

@@ -69,7 +69,7 @@ export async function register(req: Request, res: Response){
         token : emailVerificationToken
     }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-    const link = `${process.env.FRONTEND}/signup/verify?${query}`
+    const link = `${process.env.FRONTEND}/verify?${query}`
 
     const mailOptions = {
         from: process.env.BREVO_FROM,
@@ -97,7 +97,10 @@ export async function register(req: Request, res: Response){
 
         const avartarLink = `${process.env.AVATAR_LINK}${AvatarQuery}`
 
-        await User.create({ name, email, password, emailVerificationToken, age, avatar: avartarLink });
+        const tenMinutes = 1000 * 60 * 10;
+        const emailTokenExpirationDate = new Date(Date.now() + tenMinutes);
+
+        await User.create({ name, email, password, emailVerificationToken, emailTokenExpirationDate, age, avatar: avartarLink });
 
         res.status(StatusCodes.CREATED).json({ msg: 'Success! Please check your email!'});
     } catch (error){
@@ -172,20 +175,28 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
 export const verifyEmail = async (req: Request, res: Response) => {
     const {verificationToken, email} = req.body as VERIFICATION_EMAIL_PARAMS;
 
-    const user = await User.findOne({email}) as IUser | null;;
+    const user = await User.findOne({email}) as IUser | null;
+
 
     if(!user){
-        throw new UnauthenticatedError(`Can not find user with email ${email}`);
+        throw new BadRequestError(`Can not find user with email ${email}`);
     }
 
-    if(verificationToken !== verificationToken){
-        throw new UnauthenticatedError('Invalid verification token');
+    const { emailVerificationToken, emailTokenExpirationDate } = user as IUser;
+
+    if(verificationToken !== emailVerificationToken){
+        throw new BadRequestError('Invalid verification token');
     }
 
-    // TODO add token expiration date
+    const currentDate = new Date();
+
+    if(currentDate > emailTokenExpirationDate!){
+        throw new BadRequestError('Email verification token expired');
+    }
 
     user.isVerified = true;
     user.emailVerificationToken = ''
+    user.emailTokenExpirationDate = null;
     user.verified = new Date();
 
     await user.save();
@@ -193,12 +204,69 @@ export const verifyEmail = async (req: Request, res: Response) => {
     res.status(StatusCodes.OK).json({msg: 'Email verified'})
 }
 
+export const resendEmailVerification = async (req: Request, res: Response) => {
+    const {email} = req.body as { email: string };
+
+    const user  = await User.findOne({ email }) as IUser | null;
+
+    if(!user){
+        throw new BadRequestError(`Could not find user with email ${email}`);
+    }
+
+    const {name} = user;
+
+    if(user?.isVerified){
+        throw new BadRequestError('User is already verified');
+    }
+
+    const emailVerificationToken = crypto.randomBytes(40).toString('hex');
+
+    const query = Object.entries({
+        name,
+        email,
+        token : emailVerificationToken
+    }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+
+    const link = `${process.env.FRONTEND}/verify?${query}`
+
+    const mailOptions = {
+        from: process.env.BREVO_FROM,
+        to: email,
+        subject: `Welcome to Super Chat App, ${name}`,
+        html: signUpTemplate(name, link)
+    };
+
+    try {
+        const transporter = createTransport({
+            host: process.env.BREVO_HOST,
+            port: Number(process.env.BREVO_PORT),
+            auth: {
+                user: process.env.BREVO_USER,
+                pass: process.env.BREVO_TOKEN
+            },
+        });
+
+        await transporter.sendMail(mailOptions)
+
+        const tenMinutes = 1000 * 60 * 10;
+        const emailTokenExpirationDate = new Date(Date.now() + tenMinutes);
+
+        user.emailVerificationToken = emailVerificationToken;
+        user.emailTokenExpirationDate = emailTokenExpirationDate;
+
+        await user.save();
+
+        res.status(StatusCodes.OK).json({ msg: 'Success! Email Send' });
+    } catch (e) {
+        console.log(e)
+
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Can not send email'});
+    }
+}
+
 export const forgotPassword = async (req: Request, res: Response) => {
     const { email } = req.body as {email: string};
 
-    if (!email) {
-        throw new BadRequestError('Please provide valid email');
-    }
 
     const user = await User.findOne({ email }) as IUser | null;
 
@@ -213,7 +281,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
         token : passwordToken
     }).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-    const link = `${process.env.FRONTEND}/signup/verify?${query}`
+    const link = `${process.env.FRONTEND}/reset-password?${query}`
 
     const mailOptions = {
         from: process.env.BREVO_FROM,
@@ -245,7 +313,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
             .status(StatusCodes.OK)
             .json({ msg: 'Please check your email for reset password link'});
     } catch (error) {
-        console.log(error)
+        throw new BadRequestError('Could not send email');
     }
 }
 

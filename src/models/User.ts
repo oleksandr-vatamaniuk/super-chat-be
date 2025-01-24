@@ -8,6 +8,7 @@ export interface IUser extends Document{
     password: string;
     age?: Number;
     emailVerificationToken: string;
+    emailTokenExpirationDate: Date | null;
     isVerified: boolean;
     passwordToken: string;
     candidatePassword: string;
@@ -17,6 +18,7 @@ export interface IUser extends Document{
     verified: Date;
     tokenVersion: Number;
     googleId?: string
+    updatedAt: string
 }
 
 export interface IUserPayload {
@@ -72,6 +74,9 @@ const UserSchema = new Schema<IUser, UserModel>({
     emailVerificationToken: {
         type: String
     },
+    emailTokenExpirationDate: {
+        type: Date,
+    },
     isVerified: {
         type: Boolean,
         default: false
@@ -116,9 +121,8 @@ UserSchema.method('getSafetyProperties', function () {
         email: this.email,
         name: this.name,
         age: this.age,
-        id: this._id,
-        rooms: [],
-        source: []
+        _id: this._id,
+        updatedAt: this.updatedAt
     }
 })
 

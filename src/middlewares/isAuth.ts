@@ -14,8 +14,6 @@ export const isAuth = (req: Request, _: Response, next: NextFunction) => {
         const token = authorization!.split(" ")[1];
         const payload = isAccessTokenValid(token);
 
-        console.log(payload);
-
         req.user = payload as JWTUserPayload;
 
     } catch (error){

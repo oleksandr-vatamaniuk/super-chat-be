@@ -70,13 +70,15 @@ export const updateUserPassword = async (req: Request, res: Response)=> {
 }
 
 export const getSingleUser = async (req: Request, res: Response) =>{
-    const user = await User.findOne({ _id: req.params.id }).select('-password');
+    // TODO return only verified
+
+    const user = await User.findOne({ _id: req.params.id}).select('-password');
 
     if (!user) {
         throw new NotFoundError(`No user with id : ${req.params.id}`);
     }
 
-    return res.status(StatusCodes.OK).json({user})
+    return res.status(StatusCodes.OK).json({...(user as any).getSafetyProperties()})
 }
 
 export const updateUserAvatar= async (req: Request, res: Response) =>{
@@ -102,13 +104,16 @@ export const updateUserAvatar= async (req: Request, res: Response) =>{
 }
 
 export const findUsersByName = async (req: Request, res: Response) =>{
+    // TODO return only verified
+
     const {userId} = req.user as any;
     const {name} = req.body as any;
 
     const users = await User.find({
         name: { $regex: name, $options: 'i' },
-        _id: { $ne: userId }
-    }).select('name id email avatar');
+        _id: { $ne: userId },
+        isVerified: true
+    }).select('name id email avatar timestamp');
 
     return res.status(StatusCodes.OK).json(users)
 }

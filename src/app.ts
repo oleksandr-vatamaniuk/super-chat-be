@@ -4,18 +4,18 @@ import dotenv from 'dotenv';
 import cors from 'cors'
 import {v2 as cloudinary} from 'cloudinary';
 import * as process from "process";
-import authRouter from "../routes/authRouter";
-import userRoutes from "../routes/userRoutes";
-import chatRouter from "../routes/chatRouter";
-import messageRouter from "../routes/messageRouter";
+import authRouter from "./routes/authRouter";
+import userRoutes from "./routes/userRoutes";
+import chatRouter from "./routes/chatRouter";
+import messageRouter from "./routes/messageRouter";
 import { StatusCodes } from "http-status-codes";
-import {connectDB} from "../db/connectDB";
-import errorHandlerMiddleware from "../middlewares/error-handler";
-import {default as notFoundMiddleware } from '../middlewares/not-found'
+import {connectDB} from "./db/connectDB";
+import errorHandlerMiddleware from "./middlewares/error-handler";
+import {default as notFoundMiddleware } from './middlewares/not-found'
 import cookieParser from "cookie-parser";
-import {refreshTokenHandler} from "../controllers/authController";
+import {refreshTokenHandler} from "./controllers/authController";
 import morgan from 'morgan'
-import {app, server} from "../socket/socket";
+import {app, server} from "./socket/socket";
 
 dotenv.config();
 
@@ -56,6 +56,7 @@ app.use(notFoundMiddleware)
 app.use(errorHandlerMiddleware);
 
 (async () => {
+    console.log('Start Server...')
     try {
         await connectDB(process.env.MONGO_URI as string);
         server.listen(PORT, async () => {

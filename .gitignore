@@ -5,6 +5,9 @@
 # testing
 /coverage
 
+/dist
+
+/tsconfig.tsbuildinfo
 
 # misc
 .DS_Store
