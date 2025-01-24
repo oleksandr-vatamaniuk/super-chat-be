@@ -1,21 +1,32 @@
-name: Build and Publish image to Docker Hub and Deploy to Render
+name: CI/CD Pipeline - Build, Publish, and Deploy
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+
+env:
+  IMAGE_NAME: oleksandrvatamaniuk/super-chat-node
+
 jobs:
-  publish_image:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name:  Checkout Code
         uses: actions/checkout@v4
-      - name: build image
-        run: docker build -t oleksandrvatamaniuk/super-chat-node .
-      - name: push image to docker hub
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          docker login -u oleksandrvatamaniuk -p ${{ secrets.DOCKER_HUB_TOKEN }}
-          docker push oleksandrvatamaniuk/super-chat-node
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+      - name: Build Docker Image
+        run: docker build -t $IMAGE_NAME .
+
+      - name: Push Docker Image to Docker Hub
+        run: docker push $IMAGE_NAME
   deploy:
     name: Deploy
     needs: [publish_image] # Our tests must pass in order to run the deploy job
@@ -26,3 +37,4 @@ jobs:
         with:
           service-id: ${{ secrets.SERVICE_ID }} # Can be found as part of the Deploy Hook
           api-key: ${{ secrets.RENDER_API_KEY }} # Create your API key in Render Dashboard > Account Settings
+
