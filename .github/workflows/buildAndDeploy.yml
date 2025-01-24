@@ -1,0 +1,28 @@
+name: Build and Publish image to Docker Hub and Deploy to Render
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+jobs:
+  publish_image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: build image
+        run: docker build -t oleksandrvatamaniuk/super-chat-node .
+      - name: push image to docker hub
+        run: |
+          docker login -u oleksandrvatamaniuk -p ${{ secrets.DOCKER_HUB_TOKEN }}
+          docker push oleksandrvatamaniuk/super-chat-node
+  deploy:
+    name: Deploy
+    needs: [publish_image] # Our tests must pass in order to run the deploy job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.SERVICE_ID }} # Can be found as part of the Deploy Hook
+          api-key: ${{ secrets.RENDER_API_KEY }} # Create your API key in Render Dashboard > Account Settings
