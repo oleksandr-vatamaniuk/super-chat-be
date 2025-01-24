@@ -38,7 +38,7 @@ cloudinary.config({
 app.use(cookieParser(process.env.REFRESH_TOKEN_SECRET!))
 
 app.get('/', (_, res: Response) => {
-    res.send('<h1>SUPER CHAT APP</h1>')
+    res.send('<h1>SUPER CHAT APP - BE</h1>')
 })
 
 app.get('/api/v1', (_, res) => {
