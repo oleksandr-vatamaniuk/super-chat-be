@@ -28,7 +28,7 @@ jobs:
         run: docker push $IMAGE_NAME
   deploy:
     name: Deploy
-    needs: [build-and-publish] # Our tests must pass in order to run the deploy job
+    needs: [build-and-publish]
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to production

@@ -12,12 +12,6 @@
   "author": "Oleksandr Vatamaniuk",
   "license": "ISC",
   "dependencies": {
-    "@types/bcrypt": "^5.0.2",
-    "@types/cookie-parser": "^1.4.6",
-    "@types/mongoose": "^5.11.97",
-    "@types/multer": "^1.4.11",
-    "@types/nodemailer": "^6.4.16",
-    "@types/validator": "^13.11.8",
     "axios": "^1.6.1",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.3",
@@ -39,10 +33,17 @@
     "validator": "^13.11.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.16",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/mongoose": "^5.11.96",
+    "@types/morgan": "^1.9.9",
+    "@types/multer": "^1.4.12",
     "@types/node": "^20.9.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/validator": "^13.12.2",
     "nodemon": "^3.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
