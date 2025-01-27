@@ -370,7 +370,6 @@ export const googleAuthHandler = async (req: Request, res: Response) => {
     const user = await User.findOne({googleId: sub})
 
     if(user){
-        // res.status(StatusCodes.OK).json({ new: false, user })
 
         await sendRefreshToken(res, user);
 
