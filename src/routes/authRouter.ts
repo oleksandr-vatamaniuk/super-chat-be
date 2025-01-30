@@ -20,6 +20,6 @@ router.route('/verify_email').post(verifyEmail);
 router.route('/resend_verify_email').post(resendEmailVerification);
 router.route('/forgot_password').post(forgotPassword);
 router.route('/reset_password').post(resetPassword);
-router.route('/google').post(googleAuthHandler);
+router.route('/google').get(googleAuthHandler);
 
 export default router;
