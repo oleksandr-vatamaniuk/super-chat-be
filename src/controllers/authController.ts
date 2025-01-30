@@ -2,7 +2,7 @@ import * as process from 'process';
 import { Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { OAuth2Client } from 'google-auth-library';
-import axios, { AxiosRequestConfig } from 'axios';
+// import axios, { AxiosRequestConfig } from 'axios';
 import User, { IUser } from '../models/User';
 import crypto from 'crypto';
 import {
@@ -41,10 +41,6 @@ type VERIFICATION_EMAIL_PARAMS = {
 type RESET_PASSWORD_PARAMS = {
   token: string;
 } & LOGIN_PARAMS;
-
-type GOOGLE_AUTH_PARAMS = {
-  token: string;
-};
 
 type GOOGLE_USER_DATA = {
   email: string;
@@ -375,63 +371,104 @@ export const resetPassword = async (req: Request, res: Response) => {
   res.status(StatusCodes.OK).json({ msg: 'Success! Password updated' });
 };
 
+// export const googleAuthHandler = async (req: Request, res: Response) => {
+//   const { token } = req.body as GOOGLE_AUTH_PARAMS;
+//
+//   if (!token) {
+//     throw new BadRequestError('token is Empty');
+//   }
+//
+//   const oAuth2Client = new OAuth2Client(
+//     process.env.GOOGLE_CLIENT_ID,
+//     process.env.GOOGLE_CLIENT_SECRET,
+//       process.env.NODE_ENV === 'production'
+//       ? 'https://super-chat-node.onrender.com/api/v1/auth/google'
+//       : 'http://localhost:8000/api/v1/auth/google'
+//   );
+//
+//   const { tokens } = await oAuth2Client.getToken({
+//     code: token,
+//   });
+//
+//   const { sub, email, name, picture }: GOOGLE_USER_DATA =
+//     await getUserDataFromGoogle(tokens.access_token as string);
+//
+//   const user = await User.findOne({ googleId: sub });
+//
+//   if (user) {
+//     await sendRefreshToken(res, user);
+//
+//     return res
+//       .status(StatusCodes.OK)
+//       .json({ accessToken: createAccessToken(user) });
+//   } else {
+//     const newUser = await User.create({
+//       name,
+//       email,
+//       avatar: picture,
+//       googleId: sub,
+//       isVerified: true,
+//     });
+//
+//     await sendRefreshToken(res, newUser);
+//
+//     return res
+//       .status(StatusCodes.OK)
+//       .json({ accessToken: createAccessToken(newUser) });
+//   }
+// };
+
 export const googleAuthHandler = async (req: Request, res: Response) => {
-  const { token } = req.body as GOOGLE_AUTH_PARAMS;
+  try {
+    const code = req.query.code as string;
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND}/login?error=missing_code`);
+    }
 
-  if (!token) {
-    throw new BadRequestError('token is Empty');
-  }
+    const oAuth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${process.env.BACKEND}/api/v1/auth/google`
+    );
 
-  const oAuth2Client = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.NODE_ENV === 'production'
-      ? 'https://super-chat-react.onrender.com/login'
-      : 'http://localhost:3000/login'
-  );
+    const { tokens } = await oAuth2Client.getToken({ code });
+    const { sub, email, name, picture }: GOOGLE_USER_DATA =
+      await getUserDataFromGoogle(tokens.access_token as string);
 
-  const { tokens } = await oAuth2Client.getToken(token);
+    let user: IUser | null = await User.findOne({ googleId: sub });
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        avatar: picture,
+        googleId: sub,
+        isVerified: true,
+      });
+    }
 
-  const { sub, email, name, picture }: GOOGLE_USER_DATA =
-    await getUserDataFromGoogle(tokens.access_token as string);
-
-  const user = await User.findOne({ googleId: sub });
-
-  if (user) {
     await sendRefreshToken(res, user);
-
-    return res
-      .status(StatusCodes.OK)
-      .json({ accessToken: createAccessToken(user) });
-  } else {
-    const newUser = await User.create({
-      name,
-      email,
-      avatar: picture,
-      googleId: sub,
-      isVerified: true,
-    });
-
-    await sendRefreshToken(res, newUser);
-
-    return res
-      .status(StatusCodes.OK)
-      .json({ accessToken: createAccessToken(newUser) });
+    const redirectUrl = `${process.env.FRONTEND}/login?token=${createAccessToken(user)}`;
+    return res.redirect(redirectUrl);
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    return res.redirect(`${process.env.FRONTEND}/login?error=auth_failed`);
   }
 };
 
 export async function getUserDataFromGoogle(access_token: string = '') {
-  // ts-ignore
-  const config: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  };
-
-  const response = await axios.get(
+  const response = await fetch(
     `https://www.googleapis.com/oauth2/v3/userinfo`,
-    config
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    }
   );
 
-  return response.data;
+  if (!response.ok) {
+    throw new Error(`Error fetching user data: ${response.statusText}`);
+  }
+
+  return response.json();
 }
