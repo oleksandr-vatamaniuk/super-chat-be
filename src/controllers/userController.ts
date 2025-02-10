@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { JWTUserPayload } from '../utils/jwt';
-import User from '../models/User';
+import User, { IUser } from '../models/User';
 import { StatusCodes } from 'http-status-codes';
 import {
   BadRequestError,
@@ -54,9 +54,9 @@ export const updateUserPassword = async (req: Request, res: Response) => {
     throw new BadRequestError('Please provide both values');
   }
 
-  const user = await User.findOne({ _id: req.user!.userId });
+  const user = (await User.findOne({ _id: req.user!.userId })) as IUser;
 
-  const isPasswordCorrect = await user!.comparePassword(oldPassword);
+  const isPasswordCorrect = await (user as any).comparePassword(oldPassword);
 
   if (!isPasswordCorrect) {
     throw new UnauthenticatedError('Invalid old password');
@@ -80,9 +80,10 @@ export const updateUserPassword = async (req: Request, res: Response) => {
 };
 
 export const getSingleUser = async (req: Request, res: Response) => {
-  // TODO return only verified
-
-  const user = await User.findOne({ _id: req.params.id }).select('-password');
+  const user = await User.findOne({
+    _id: req.params.id,
+    isVerified: true,
+  }).select('-password');
 
   if (!user) {
     throw new NotFoundError(`No user with id : ${req.params.id}`);
@@ -114,8 +115,6 @@ export const updateUserAvatar = async (req: Request, res: Response) => {
 };
 
 export const findUsersByName = async (req: Request, res: Response) => {
-  // TODO return only verified
-
   const { userId } = req.user as any;
   const { name } = req.body as any;
 

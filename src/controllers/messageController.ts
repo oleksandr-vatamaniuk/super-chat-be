@@ -1,7 +1,7 @@
 import Message from '../models/Message';
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import Chat from '../models/Chat';
+import Chat, { IChat } from '../models/Chat';
 import { getReceiverSocketId, io } from '../socket/socket';
 
 export const sendMessage = async (req: Request, res: Response) => {
@@ -9,14 +9,15 @@ export const sendMessage = async (req: Request, res: Response) => {
   const { id: receiverId } = req.params;
   const { userId: senderId } = req.user as any;
 
-  let conversation = await Chat.findOne({
+  // ts-ignore
+  let conversation: IChat | null = await Chat.findOne({
     participants: { $all: [senderId, receiverId] },
-  });
+  }).exec();
 
   if (!conversation) {
-    conversation = await Chat.create({
+    conversation = (await Chat.create({
       participants: [senderId, receiverId],
-    });
+    })) as IChat;
   }
 
   const newMessage = new Message({
@@ -29,8 +30,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     conversation.messages.push(newMessage._id);
   }
 
-  // this will run in parallel
-  await Promise.all([conversation.save(), newMessage.save()]);
+  await Promise.all([(conversation as any).save(), newMessage.save()]);
 
   const receiverSocketId = getReceiverSocketId(receiverId);
   if (receiverSocketId) {
@@ -44,9 +44,9 @@ export const getMessages = async (req: Request, res: Response) => {
   const { id: userToChatId } = req.params;
   const { userId: senderId } = req.user as any;
 
-  const conversation = await Chat.findOne({
+  const conversation = (await Chat.findOne({
     participants: { $all: [senderId, userToChatId] },
-  }).populate('messages'); // NOT REFERENCE BUT ACTUAL MESSAGES
+  }).populate('messages')) as IChat;
 
   if (!conversation) return res.status(200).json([]);
 

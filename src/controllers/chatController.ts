@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
-import Chat from '../models/Chat';
+import Chat, { IChat } from '../models/Chat';
 import { StatusCodes } from 'http-status-codes';
 import { Types } from 'mongoose';
 import { BadRequestError } from '../errors';
 import Message from '../models/Message';
 import { getReceiverSocketId, io } from '../socket/socket';
 import User from '../models/User';
+import { JWTUserPayload } from '../utils/jwt';
 
 export const getUserChats = async (req: Request, res: Response) => {
   const { userId } = req.user as any;
@@ -129,15 +130,15 @@ export const getUserChats = async (req: Request, res: Response) => {
 };
 
 export const deleteChat = async (req: Request, res: Response) => {
-  const { userId } = req.user as any;
+  const { userId } = req.user as JWTUserPayload;
 
   const { id: participantId } = req.params;
 
-  const chat = await Chat.findOne({
+  const chat = (await Chat.findOne({
     participants: {
       $all: [new Types.ObjectId(participantId), new Types.ObjectId(userId)],
     },
-  });
+  })) as IChat;
 
   if (!chat) throw new BadRequestError('No such chat');
 

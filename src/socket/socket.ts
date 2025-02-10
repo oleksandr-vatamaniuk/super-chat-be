@@ -58,8 +58,6 @@ io.on('connection', (socket) => {
     userSocketMap[`${userId}`] = socket.id;
   }
 
-  console.log(userSocketMap);
-
   io.emit('onlineUsers', Object.keys(userSocketMap));
 
   socket.on('markAsRead', async (chatId, callback) => {
