@@ -22,7 +22,6 @@
   "author": "Oleksandr Vatamaniuk",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.6.1",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.6",
@@ -38,7 +37,6 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.16",
-    "qs-stringify": "^1.2.1",
     "socket.io": "^4.8.0",
     "validator": "^13.11.0"
   },

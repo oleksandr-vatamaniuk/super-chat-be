@@ -2,7 +2,6 @@ import * as process from 'process';
 import { Response, Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { OAuth2Client } from 'google-auth-library';
-// import axios, { AxiosRequestConfig } from 'axios';
 import User, { IUser } from '../models/User';
 import crypto from 'crypto';
 import {
@@ -17,9 +16,10 @@ import {
   UnauthenticatedError,
 } from '../errors';
 import createHash from '../utils/createHash';
-import { createTransport } from 'nodemailer';
-import { signUpTemplate } from '../emailTemplates/signUp';
-import { resetPasswordTemplate } from '../emailTemplates/resetPasswordTemplate';
+import { sendEmail } from '../email/sendEmail';
+import { toQueryString } from '../utils/toQueryString';
+import { signUpTemplate } from '../email/templates/signUpTemplate';
+import { resetPasswordTemplate } from '../email/templates/resetPasswordTemplate';
 
 type LOGIN_PARAMS = {
   email: string;
@@ -64,67 +64,31 @@ export async function register(req: Request, res: Response) {
   }
 
   const emailVerificationToken = crypto.randomBytes(40).toString('hex');
-
-  const query = Object.entries({
+  const link = `${process.env.FRONTEND}/verify?${toQueryString({
     name,
     email,
     token: emailVerificationToken,
-  })
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-    .join('&');
+  })}`;
 
-  const link = `${process.env.FRONTEND}/verify?${query}`;
-
-  const mailOptions = {
-    from: process.env.BREVO_FROM,
+  await sendEmail({
     to: email,
     subject: `Welcome to Super Chat App, ${name}`,
     html: signUpTemplate(name, link),
-  };
+  });
 
-  try {
-    const transporter = createTransport({
-      host: process.env.BREVO_HOST,
-      port: Number(process.env.BREVO_PORT),
-      auth: {
-        user: process.env.BREVO_USER,
-        pass: process.env.BREVO_TOKEN,
-      },
-    });
+  await User.create({
+    name,
+    email,
+    password,
+    emailVerificationToken,
+    emailTokenExpirationDate: new Date(Date.now() + 10 * 60 * 1000), // 10min
+    age,
+    authProvider: 'MAIL',
+  });
 
-    await transporter.sendMail(mailOptions);
-
-    const AvatarQuery = Object.entries({
-      name,
-      background: 'random',
-    })
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join('&');
-
-    const avartarLink = `${process.env.AVATAR_LINK}${AvatarQuery}`;
-
-    const tenMinutes = 1000 * 60 * 10;
-    const emailTokenExpirationDate = new Date(Date.now() + tenMinutes);
-
-    await User.create({
-      name,
-      email,
-      password,
-      emailVerificationToken,
-      emailTokenExpirationDate,
-      age,
-      avatar: avartarLink,
-    });
-
-    res
-      .status(StatusCodes.CREATED)
-      .json({ msg: 'Success! Please check your email!' });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: 'Can not send email' });
-  }
+  res
+    .status(StatusCodes.CREATED)
+    .json({ msg: 'Success! Please check your email!' });
 }
 
 export const login = async (req: Request, res: Response) => {
@@ -136,15 +100,18 @@ export const login = async (req: Request, res: Response) => {
     throw new BadRequestError(`Could not find user with email ${email}`);
   }
 
-  // TODO check if user not from google
+  if (user.authProvider && user.authProvider === 'GOOGLE') {
+    throw new BadRequestError(
+      'This account was created using Google. Please log in with Google.'
+    );
+  }
 
   const isPasswordCorrect = await (user as any).comparePassword(password);
-
   if (!isPasswordCorrect) {
     throw new BadRequestError('Invalid Password');
   }
 
-  if (!user!.isVerified) {
+  if (!user.isVerified) {
     throw new BadRequestError('Please verify your email');
   }
 
@@ -239,52 +206,29 @@ export const resendEmailVerification = async (req: Request, res: Response) => {
   }
 
   const emailVerificationToken = crypto.randomBytes(40).toString('hex');
-
-  const query = Object.entries({
+  const queryString = toQueryString({
     name,
     email,
     token: emailVerificationToken,
-  })
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-    .join('&');
+  });
 
-  const link = `${process.env.FRONTEND}/verify?${query}`;
+  const link = `${process.env.FRONTEND}/verify?${queryString}`;
 
-  const mailOptions = {
-    from: process.env.BREVO_FROM,
+  await sendEmail({
     to: email,
     subject: `Welcome to Super Chat App, ${name}`,
     html: signUpTemplate(name, link),
-  };
+  });
 
-  try {
-    const transporter = createTransport({
-      host: process.env.BREVO_HOST,
-      port: Number(process.env.BREVO_PORT),
-      auth: {
-        user: process.env.BREVO_USER,
-        pass: process.env.BREVO_TOKEN,
-      },
-    });
+  const tenMinutes = 1000 * 60 * 10;
+  const emailTokenExpirationDate = new Date(Date.now() + tenMinutes);
 
-    await transporter.sendMail(mailOptions);
+  user.emailVerificationToken = emailVerificationToken;
+  user.emailTokenExpirationDate = emailTokenExpirationDate;
 
-    const tenMinutes = 1000 * 60 * 10;
-    const emailTokenExpirationDate = new Date(Date.now() + tenMinutes);
+  await user.save();
 
-    user.emailVerificationToken = emailVerificationToken;
-    user.emailTokenExpirationDate = emailTokenExpirationDate;
-
-    await user.save();
-
-    res.status(StatusCodes.OK).json({ msg: 'Success! Email Send' });
-  } catch (e) {
-    console.log(e);
-
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ message: 'Can not send email' });
-  }
+  res.status(StatusCodes.OK).json({ msg: 'Success! Email Send' });
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
@@ -296,48 +240,38 @@ export const forgotPassword = async (req: Request, res: Response) => {
     throw new NotFoundError(`Can't find user with email ${email}`);
   }
 
+  if (user.authProvider && user.authProvider === 'GOOGLE') {
+    throw new BadRequestError(
+      'Password reset is unavailable for accounts created with Google.'
+    );
+  }
+
   const passwordToken = crypto.randomBytes(70).toString('hex');
 
-  const query = Object.entries({
+  const queryString = toQueryString({
     email,
     token: passwordToken,
-  })
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-    .join('&');
+  });
 
-  const link = `${process.env.FRONTEND}/reset-password?${query}`;
+  const link = `${process.env.FRONTEND}/reset-password?${queryString}`;
 
-  const mailOptions = {
-    from: process.env.BREVO_FROM,
+  await sendEmail({
     to: email,
-    subject: `Password reset for ${user.name}`,
+    subject: `Password reset for, ${user.name}`,
     html: resetPasswordTemplate(link),
-  };
+  });
 
-  try {
-    const transporter = createTransport({
-      host: process.env.BREVO_HOST,
-      port: Number(process.env.BREVO_PORT),
-      auth: { user: process.env.BREVO_USER, pass: process.env.BREVO_TOKEN },
-    });
+  const tenMinutes = 1000 * 60 * 10;
+  const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
 
-    await transporter.sendMail(mailOptions);
+  user.passwordToken = createHash(passwordToken);
+  user.passwordTokenExpirationDate = passwordTokenExpirationDate;
 
-    const tenMinutes = 1000 * 60 * 10;
-    const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
+  await user.save();
 
-    user.passwordToken = createHash(passwordToken);
-    user.passwordTokenExpirationDate = passwordTokenExpirationDate;
-
-    await user.save();
-
-    res
-      .status(StatusCodes.OK)
-      .json({ msg: 'Please check your email for reset password link' });
-  } catch (error) {
-    console.log(error);
-    throw new BadRequestError('Could not send email');
-  }
+  res
+    .status(StatusCodes.OK)
+    .json({ msg: 'Please check your email for reset password link' });
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
@@ -371,53 +305,6 @@ export const resetPassword = async (req: Request, res: Response) => {
   res.status(StatusCodes.OK).json({ msg: 'Success! Password updated' });
 };
 
-// export const googleAuthHandler = async (req: Request, res: Response) => {
-//   const { token } = req.body as GOOGLE_AUTH_PARAMS;
-//
-//   if (!token) {
-//     throw new BadRequestError('token is Empty');
-//   }
-//
-//   const oAuth2Client = new OAuth2Client(
-//     process.env.GOOGLE_CLIENT_ID,
-//     process.env.GOOGLE_CLIENT_SECRET,
-//       process.env.NODE_ENV === 'production'
-//       ? 'https://super-chat-node.onrender.com/api/v1/auth/google'
-//       : 'http://localhost:8000/api/v1/auth/google'
-//   );
-//
-//   const { tokens } = await oAuth2Client.getToken({
-//     code: token,
-//   });
-//
-//   const { sub, email, name, picture }: GOOGLE_USER_DATA =
-//     await getUserDataFromGoogle(tokens.access_token as string);
-//
-//   const user = await User.findOne({ googleId: sub });
-//
-//   if (user) {
-//     await sendRefreshToken(res, user);
-//
-//     return res
-//       .status(StatusCodes.OK)
-//       .json({ accessToken: createAccessToken(user) });
-//   } else {
-//     const newUser = await User.create({
-//       name,
-//       email,
-//       avatar: picture,
-//       googleId: sub,
-//       isVerified: true,
-//     });
-//
-//     await sendRefreshToken(res, newUser);
-//
-//     return res
-//       .status(StatusCodes.OK)
-//       .json({ accessToken: createAccessToken(newUser) });
-//   }
-// };
-
 export const googleAuthHandler = async (req: Request, res: Response) => {
   try {
     const code = req.query.code as string;
@@ -441,6 +328,7 @@ export const googleAuthHandler = async (req: Request, res: Response) => {
         name,
         email,
         avatar: picture,
+        authProvider: 'GOOGLE',
         googleId: sub,
         isVerified: true,
       });

@@ -1,15 +1,26 @@
-import { model, Schema } from 'mongoose';
-import * as mongoose from 'mongoose';
+import { model, Schema, Document, Types, Model } from 'mongoose';
 
-const messageSchema = new Schema(
+// Define the Message interface
+export interface IMessage extends Document {
+  _id: Types.ObjectId;
+  senderId: Types.ObjectId;
+  receiverId: Types.ObjectId;
+  message: string;
+  readByReceiver: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Define the schema
+const messageSchema = new Schema<IMessage>(
   {
     senderId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
     receiverId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
@@ -26,5 +37,9 @@ const messageSchema = new Schema(
   { timestamps: true }
 );
 
-const Message = model('Message', messageSchema);
-export default Message;
+// Create and export the Message model
+const MessageModel: Model<IMessage> = model<IMessage, any>(
+  'Message',
+  messageSchema
+);
+export default MessageModel;

@@ -331,9 +331,6 @@ export function resetPasswordTemplate(verificationCode) {
                                                                                                 <tr>
                                                                                                     <td>Your link is active for 15 minutes</td>
                                                                                                 </tr>
-                                                                                                <tr>
-                                                                                                    <td>After that, you will need to resend the verification email.</td>
-                                                                                                </tr>
                                                                                                 </tbody>
                                                                                             </table>
                                                                                         </td>

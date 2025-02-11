@@ -19,6 +19,7 @@ export interface IUser extends Document {
   tokenVersion: number;
   googleId?: string;
   updatedAt: string;
+  authProvider: 'GOOGLE' | 'MAIL' | 'FACEBOOK'; // Added source field
 }
 
 export interface IUserPayload {
@@ -71,6 +72,7 @@ const UserSchema = new Schema<IUser, UserModel>(
     avatar: {
       type: String,
       required: false,
+      default: '',
     },
     emailVerificationToken: {
       type: String,
@@ -96,6 +98,11 @@ const UserSchema = new Schema<IUser, UserModel>(
     googleId: {
       type: String,
       required: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ['GOOGLE', 'MAIL', 'FACEBOOK'],
+      default: 'MAIL',
     },
   },
   { timestamps: true }
@@ -128,6 +135,7 @@ UserSchema.method('getSafetyProperties', function () {
     age: this.age,
     _id: this._id,
     updatedAt: this.updatedAt,
+    authProvider: this.authProvider ?? 'MAIL',
   };
 });
 
