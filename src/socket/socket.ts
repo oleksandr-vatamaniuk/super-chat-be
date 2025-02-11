@@ -10,6 +10,7 @@ const app = express();
 export const getReceiverSocketId = (receiverId) => {
   return userSocketMap[receiverId];
 };
+
 const userSocketMap = {}; // {userId: socketId}
 
 const server = http.createServer(app);
@@ -61,8 +62,6 @@ io.on('connection', (socket) => {
   io.emit('onlineUsers', Object.keys(userSocketMap));
 
   socket.on('markAsRead', async (chatId, callback) => {
-    console.log(`user chatId ${chatId}`, userId);
-
     try {
       const resut = await markMessagesAsRead(userId, chatId);
       callback({

@@ -2,8 +2,6 @@ name: CI/CD Pipeline - Build, Publish, and Deploy
 on:
   push:
     branches: [ "master" ]
-#  pull_request:
-#    branches: [ "master" ]
 
 env:
   IMAGE_NAME: oleksandrvatamaniuk/super-chat-node

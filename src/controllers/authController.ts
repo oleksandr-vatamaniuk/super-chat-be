@@ -83,7 +83,7 @@ export async function register(req: Request, res: Response) {
     emailVerificationToken,
     emailTokenExpirationDate: new Date(Date.now() + 10 * 60 * 1000), // 10min
     age,
-    source: 'MAIL',
+    authProvider: 'MAIL',
   });
 
   res
@@ -100,7 +100,7 @@ export const login = async (req: Request, res: Response) => {
     throw new BadRequestError(`Could not find user with email ${email}`);
   }
 
-  if (user.source && user.source === 'GOOGLE') {
+  if (user.authProvider && user.authProvider === 'GOOGLE') {
     throw new BadRequestError(
       'This account was created using Google. Please log in with Google.'
     );
@@ -240,7 +240,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     throw new NotFoundError(`Can't find user with email ${email}`);
   }
 
-  if (user.source && user.source === 'GOOGLE') {
+  if (user.authProvider && user.authProvider === 'GOOGLE') {
     throw new BadRequestError(
       'Password reset is unavailable for accounts created with Google.'
     );
@@ -328,7 +328,7 @@ export const googleAuthHandler = async (req: Request, res: Response) => {
         name,
         email,
         avatar: picture,
-        source: 'GOOGLE',
+        authProvider: 'GOOGLE',
         googleId: sub,
         isVerified: true,
       });
