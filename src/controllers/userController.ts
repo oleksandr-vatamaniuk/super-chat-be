@@ -119,7 +119,7 @@ export const findUsersByName = async (req: Request, res: Response) => {
   const { name } = req.body as any;
 
   const users = await User.find({
-    name: { $regex: name, $options: 'i' },
+    name: { $regex: `(^|\\s)${name}`, $options: 'i' },
     _id: { $ne: userId },
     isVerified: true,
   }).select('name id email avatar timestamp');

@@ -43,6 +43,7 @@ export const getUserChats = async (req: Request, res: Response) => {
         pipeline: [
           {
             $project: {
+              email: 1,
               name: 1,
               avatar: 1,
               updatedAt: 1,
