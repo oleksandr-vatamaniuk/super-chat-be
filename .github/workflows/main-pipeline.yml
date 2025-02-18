@@ -20,7 +20,7 @@ jobs:
           echo "$DOCKER_PASSWORD" | docker login -u oleksandrvatamaniuk --password-stdin
 
       - name: Build Docker Image
-        run: docker build -t $IMAGE_NAME .
+        run: docker build -f prod.Dockerfile -t $IMAGE_NAME .
 
       - name: Push Docker Image to Docker Hub
         run: docker push $IMAGE_NAME
